@@ -6,6 +6,7 @@
       <list>
         <option value="$PROJECT_DIR$/svc-orders/pom.xml" />
         <option value="$PROJECT_DIR$/svc-menu/pom.xml" />
+        <option value="$PROJECT_DIR$/svc-inventory/pom.xml" />
       </list>
     </option>
   </component>

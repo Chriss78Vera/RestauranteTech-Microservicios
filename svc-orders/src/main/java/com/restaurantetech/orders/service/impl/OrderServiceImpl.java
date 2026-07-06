@@ -1,6 +1,6 @@
 package com.restaurantetech.orders.service.impl;
 
-import com.restaurantetech.orders.client.MenuServiceClient;
+import com.restaurantetech.orders.client.*;
 import com.restaurantetech.orders.dto.*;
 import com.restaurantetech.orders.exception.*;
 import com.restaurantetech.orders.mapper.OrderMapper;
@@ -22,6 +22,7 @@ public class OrderServiceImpl implements OrderService {
     private final OrderRepository orderRepository;
     private final OrderMapper orderMapper;
     private final MenuServiceClient menuServiceClient;
+    private final InventoryServiceClient inventoryServiceClient;
 
     // Crea un pedido solo si el plato existe y esta disponible.
     @Override
@@ -30,6 +31,11 @@ public class OrderServiceImpl implements OrderService {
         log.info("Creando pedido para {} con plato {}", request.getCustomerName(), request.getDishId());
         DishResponse dish = menuServiceClient.getDishById(request.getDishId());
         validateDishAvailable(dish);
+
+        InventoryItemResponse inventory = inventoryServiceClient.getInventoryByDishId(request.getDishId());
+        validateStockAvailable(inventory, request.getQuantity(), dish.getName());
+        inventoryServiceClient.decreaseStock(request.getDishId(), request.getQuantity());
+
         Double total = dish.getPrice() * request.getQuantity();
         Order saved = orderRepository.save(orderMapper.toEntity(request, total));
         return orderMapper.toResponse(saved, dish);
@@ -61,6 +67,19 @@ public class OrderServiceImpl implements OrderService {
         }
         if (!Boolean.TRUE.equals(dish.getAvailable())) {
             throw new BusinessRuleException("El plato '" + dish.getName() + "' no está disponible actualmente.");
+        }
+    }
+
+
+    // Revisa que el inventario tenga unidades suficientes para el pedido.
+    private void validateStockAvailable(InventoryItemResponse inventory, Integer requestedQuantity, String dishName) {
+        if (inventory == null) {
+            throw new ResourceNotFoundException("No existe inventario registrado para el plato solicitado.");
+        }
+        if (inventory.getStockQuantity() < requestedQuantity) {
+            throw new BusinessRuleException("Stock insuficiente para el plato '" + dishName
+                    + "'. Disponible: " + inventory.getStockQuantity()
+                    + ", solicitado: " + requestedQuantity + ".");
         }
     }
 

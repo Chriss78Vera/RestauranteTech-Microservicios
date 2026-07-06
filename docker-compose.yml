@@ -37,6 +37,25 @@ services:
     networks:
       - restaurant-network
 
+  inventory-db:
+    image: postgres:16-alpine
+    container_name: inventory-db
+    environment:
+      POSTGRES_DB: db_inventory
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+    ports:
+      - "5440:5432"
+    volumes:
+      - inventory-db-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d db_inventory"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - restaurant-network
+
   svc-menu:
     build:
       context: ./svc-menu
@@ -54,6 +73,23 @@ services:
     networks:
       - restaurant-network
 
+  svc-inventory:
+    build:
+      context: ./svc-inventory
+      dockerfile: Dockerfile
+    container_name: svc-inventory
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:postgresql://inventory-db:5432/db_inventory
+      SPRING_DATASOURCE_USERNAME: postgres
+      SPRING_DATASOURCE_PASSWORD: postgres
+    expose:
+      - "8083"
+    depends_on:
+      inventory-db:
+        condition: service_healthy
+    networks:
+      - restaurant-network
+
   svc-orders:
     build:
       context: ./svc-orders
@@ -64,12 +100,15 @@ services:
       SPRING_DATASOURCE_USERNAME: postgres
       SPRING_DATASOURCE_PASSWORD: postgres
       MENU_SERVICE_URL: http://svc-menu:8081
+      INVENTORY_SERVICE_URL: http://svc-inventory:8083
     expose:
       - "8082"
     depends_on:
       orders-db:
         condition: service_healthy
       svc-menu:
+        condition: service_started
+      svc-inventory:
         condition: service_started
     networks:
       - restaurant-network
@@ -84,12 +123,14 @@ services:
     depends_on:
       - svc-menu
       - svc-orders
+      - svc-inventory
     networks:
       - restaurant-network
 
 volumes:
   menu-db-data:
   orders-db-data:
+  inventory-db-data:
 
 networks:
   restaurant-network:
