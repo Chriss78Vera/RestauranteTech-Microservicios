@@ -1,6 +1,7 @@
 package com.restaurantetech.inventory.repository;
 
 import com.restaurantetech.inventory.model.InventoryItem;
+import jakarta.persistence.LockModeType;
 import org.springframework.data.jpa.repository.*;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
@@ -10,6 +11,7 @@ import java.util.Optional;
 /** Repositorio para trabajar con la tabla de inventario. */
 @Repository
 public interface InventoryItemRepository extends JpaRepository<InventoryItem, Long> {
+
     Optional<InventoryItem> findByDishId(Long dishId);
 
     boolean existsByDishId(Long dishId);
